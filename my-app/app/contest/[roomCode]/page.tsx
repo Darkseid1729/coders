@@ -44,83 +44,75 @@ export default function ContestRoomPage() {
       hasJoinedRoom.current = true
     }
 
-    // Set up socket event listeners
-    const socket = socketService.getSocket()
-    if (socket) {
-      socket.on("room_joined", (data) => {
-        setRoomData(data)
-        setParticipants(data.participants?.length || 1)
-        setIsConnected(true)
+    // Set up socket event listeners using the new API
+    const handleRoomJoined = (data: any) => {
+      setRoomData(data)
+      setParticipants(data.participants?.length || 1)
+      setIsConnected(true)
 
-        // Only show notification once
-        if (!hasJoinedRoom.current) {
-          addNotification({
-            type: "success",
-            title: "Room Joined",
-            message: `Successfully joined room ${roomCode}`,
-            duration: 3000,
-          })
-          hasJoinedRoom.current = true
-        }
-
-        if (data.contest?.isActive) {
-          setIsContestActive(true)
-          // Calculate remaining time
-          const elapsed = Math.floor((new Date().getTime() - new Date(data.contest.startTime).getTime()) / 1000)
-          setTimeRemaining(Math.max(0, data.contest.duration - elapsed))
-        }
-      })
-
-      socket.on("contest_started", (contest) => {
-        setIsContestActive(true)
-        setTimeRemaining(contest.duration)
-        addNotification({
-          type: "info",
-          title: "Contest Started",
-          message: "The coding contest has begun!",
-          duration: 4000,
-        })
-      })
-
-      socket.on("user_joined", (data) => {
-        setParticipants(data.participantCount)
-      })
-
-      socket.on("user_left", (data) => {
-        setParticipants(data.participantCount)
-      })
-
-      socket.on("submission_completed", (data) => {
+      if (!hasJoinedRoom.current) {
         addNotification({
           type: "success",
-          title: "Submission Complete",
-          message: `Score: ${data.score} points (${data.passedTests}/${data.totalTests} tests passed)`,
-          duration: 5000,
+          title: "Room Joined",
+          message: `Successfully joined room ${roomCode}`,
+          duration: 3000,
         })
-        console.log("Submission completed:", data)
-      })
+        hasJoinedRoom.current = true
+      }
 
-      socket.on("leaderboard_updated", (leaderboard) => {
-        console.log("Leaderboard updated:", leaderboard)
-      })
-
-      socket.on("new_message", (message) => {
-        setMessages((prev) => [...prev, message])
-      })
-
+      if (data.contest?.isActive) {
+        setIsContestActive(true)
+        // Calculate remaining time
+        const elapsed = Math.floor((new Date().getTime() - new Date(data.contest.startTime).getTime()) / 1000)
+        setTimeRemaining(Math.max(0, data.contest.duration - elapsed))
+      }
     }
 
+    const handleContestStarted = (contest: any) => {
+      setIsContestActive(true)
+      setTimeRemaining(contest.duration)
+      addNotification({
+        type: "info",
+        title: "Contest Started",
+        message: "The coding contest has begun!",
+        duration: 4000,
+      })
+    }
+
+    const handleUserJoined = (data: any) => setParticipants(data.participantCount)
+    const handleUserLeft = (data: any) => setParticipants(data.participantCount)
+    const handleSubmissionCompleted = (data: any) => {
+      addNotification({
+        type: "success",
+        title: "Submission Complete",
+        message: `Score: ${data.score} points (${data.passedTests}/${data.totalTests} tests passed)`,
+        duration: 5000,
+      })
+      console.log("Submission completed:", data)
+    }
+    const handleLeaderboardUpdated = (leaderboard: any) => {
+      console.log("Leaderboard updated:", leaderboard)
+    }
+    const handleNewMessage = (message: any) => {
+      setMessages((prev) => [...prev, message])
+    }
+
+    socketService.on("room_joined", handleRoomJoined)
+    socketService.on("contest_started", handleContestStarted)
+    socketService.on("user_joined", handleUserJoined)
+    socketService.on("user_left", handleUserLeft)
+    socketService.on("submission_completed", handleSubmissionCompleted)
+    socketService.on("leaderboard_updated", handleLeaderboardUpdated)
+    socketService.on("new_message", handleNewMessage)
+
     return () => {
-      // Clean up socket listeners
-      if (socket) {
-        socket.off("room_joined")
-        socket.off("contest_started")
-        socket.off("user_joined")
-        socket.off("user_left")
-        socket.off("submission_completed")
-        socket.off("leaderboard_updated")
-        socket.off("new_message")
-      }
+      socketService.off("room_joined", handleRoomJoined)
+      socketService.off("contest_started", handleContestStarted)
+      socketService.off("user_joined", handleUserJoined)
+      socketService.off("user_left", handleUserLeft)
+      socketService.off("submission_completed", handleSubmissionCompleted)
+      socketService.off("leaderboard_updated", handleLeaderboardUpdated)
+      socketService.off("new_message", handleNewMessage)
     }
   }, [user, roomCode, router, addNotification])
 

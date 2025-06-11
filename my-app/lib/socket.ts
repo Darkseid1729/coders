@@ -1,41 +1,80 @@
-import { io, Socket } from "socket.io-client"
+const WS_URL = "wss://rxqxzqeseopqudvjtomv.supabase.co/functions/v1/websocket-function"
 
-const socket = io(process.env.NEXT_PUBLIC_SOCKET_URL!, {
-  transports: ["websocket"],
-  withCredentials: true,
-})
+let socket: WebSocket | null = null
+let isConnected = false
+const listeners: { [event: string]: ((data: any) => void)[] } = {}
 
-// Extend the type to include on/off/emit
+function connect() {
+  if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) return
+  socket = new WebSocket(WS_URL)
+  socket.onopen = () => {
+    isConnected = true
+    listeners["open"]?.forEach(fn => fn({}))
+  }
+  socket.onclose = () => {
+    isConnected = false
+    listeners["close"]?.forEach(fn => fn({}))
+  }
+  socket.onmessage = (event) => {
+    const data = JSON.parse(event.data)
+    listeners[data.type || "message"]?.forEach(fn => fn(data))
+  }
+  socket.onerror = (err) => {
+    listeners["error"]?.forEach(fn => fn(err))
+  }
+}
+
+function disconnect() {
+  socket?.close()
+  socket = null
+  isConnected = false
+}
+
+function emit(type: string, payload: any) {
+  if (socket?.readyState === WebSocket.OPEN) {
+    socket.send(JSON.stringify({ type, ...payload }))
+  }
+}
+
+function on(event: string, handler: (data: any) => void) {
+  listeners[event] = listeners[event] || []
+  listeners[event].push(handler)
+}
+
+function off(event: string, handler: (data: any) => void) {
+  listeners[event] = (listeners[event] || []).filter(fn => fn !== handler)
+}
+
 type SocketService = {
-  getSocket: () => Socket
+  connect: typeof connect
+  disconnect: typeof disconnect
+  isSocketConnected: () => boolean
+  emit: typeof emit
+  on: typeof on
+  off: typeof off
   joinRoom: (roomCode: string) => void
   startContest: (contestData: any) => void
-  isSocketConnected: () => boolean
-  on: Socket["on"]
-  off: Socket["off"]
-  emit: Socket["emit"]
-  connect: Socket["connect"]
-  disconnect: Socket["disconnect"]
   sendMessage: (message: string | { message: string }) => void
   submitCode: (submissionData: any) => void
 }
 
 export const socketService: SocketService = {
-  getSocket: () => socket,
-  joinRoom: (roomCode: string) => socket.emit("join_room", roomCode), // <-- fix here
-  startContest: (contestData: any) => socket.emit("start_contest", contestData),
-  isSocketConnected: () => socket.connected,
-  on: socket.on.bind(socket),
-  off: socket.off.bind(socket),
-  emit: socket.emit.bind(socket),
-  connect: socket.connect.bind(socket),
-  disconnect: socket.disconnect.bind(socket),
-  sendMessage: (message) => socket.emit("send_message", message),
-  submitCode: (submissionData) => socket.emit("submit_code", submissionData),
+  connect,
+  disconnect,
+  isSocketConnected: () => isConnected,
+  emit,
+  on,
+  off,
+  joinRoom: (roomCode: string) => emit("join_room", { roomCode }),
+  startContest: (contestData: any) => emit("start_contest", { contestData }),
+  sendMessage: (message) => emit("send_message", typeof message === "string" ? { message } : message),
+  submitCode: (submissionData) => emit("submit_code", { submissionData }),
 }
 
 // Usage in components:
 // socketService.connect()
 // socketService.disconnect()
-// socketService.on("event", handler)
-// or socketService.getSocket().on("event", handler)
+// socketService.on("message", handler) // or on("open"/"close"/"error")
+// socketService.joinRoom("roomCode")
+// socketService.sendMessage("hello")
+// socketService.submitCode({ ... })

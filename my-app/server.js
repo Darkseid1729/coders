@@ -36,8 +36,11 @@ if (process.env.USE_HTTPS === "true") {
 }
 
 const io = new Server(server, {
-  cors: {
-    origin: process.env.CLIENT_URL || "http://localhost:3000",
+    cors: {
+      origin:[ process.env.CLIENT_URL,
+        "http://localhost:3000",
+        "https://opulent-succotash-ggvrrp4q9rq2wv47.github.dev"
+        ],
     methods: ["GET", "POST"],
   },
 })

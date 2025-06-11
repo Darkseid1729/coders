@@ -9,26 +9,25 @@ export function ConnectionStatus() {
   const [status, setStatus] = useState<"connected" | "disconnected" | "connecting">("disconnected")
 
   useEffect(() => {
-    const socket = socketService.getSocket()
-    if (!socket) return
-
-    const handleConnect = () => setStatus("connected")
-    const handleDisconnect = () => setStatus("disconnected")
+    // Remove usage of getSocket, use socketService events directly
+    const handleOpen = () => setStatus("connected")
+    const handleClose = () => setStatus("disconnected")
     const handleConnecting = () => setStatus("connecting")
 
-    socket.on("connect", handleConnect)
-    socket.on("disconnect", handleDisconnect)
-    socket.on("connecting", handleConnecting)
+    socketService.on("open", handleOpen)
+    socketService.on("close", handleClose)
+    // Optionally, you can set status to "connecting" when connect() is called
+    // or listen to a custom "connecting" event if you emit it
 
     // Set initial status
-    if (socket.connected) {
+    if (socketService.isSocketConnected()) {
       setStatus("connected")
     }
 
     return () => {
-      socket.off("connect", handleConnect)
-      socket.off("disconnect", handleDisconnect)
-      socket.off("connecting", handleConnecting)
+      socketService.off("open", handleOpen)
+      socketService.off("close", handleClose)
+      // socketService.off("connecting", handleConnecting)
     }
   }, [])
 

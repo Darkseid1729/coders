@@ -51,21 +51,17 @@ export function ChatPanel({ roomCode, messages }: ChatPanelProps) {
       return
     }
 
-    // Only connect if not already connected
     if (!socketService.isSocketConnected()) {
       socketService.connect()
     }
 
     setIsReady(false)
-    // Authenticate every time we have a new token
     socketService.emit("authenticate", token)
 
-    // Handler for authenticated event
     const handleAuthenticated = () => {
       console.log("Socket authenticated, joining room:", roomCode)
       socketService.joinRoom(roomCode)
     }
-    // Handler for room joined event
     const handleRoomJoined = (data: any) => {
       console.log("Joined room:", roomCode, data)
       setIsReady(true)
@@ -73,13 +69,6 @@ export function ChatPanel({ roomCode, messages }: ChatPanelProps) {
 
     socketService.on("authenticated", handleAuthenticated)
     socketService.on("room_joined", handleRoomJoined)
-
-    // Debug: log socket connection status
-    const socket = socketService.getSocket()
-    if (socket) {
-      socket.on("connect", () => console.log("Socket connected"))
-      socket.on("disconnect", () => console.log("Socket disconnected"))
-    }
 
     // Fallback: if not ready after 5 seconds, enable input for debugging
     const fallbackTimeout = setTimeout(() => {
@@ -92,10 +81,6 @@ export function ChatPanel({ roomCode, messages }: ChatPanelProps) {
     return () => {
       socketService.off("authenticated", handleAuthenticated)
       socketService.off("room_joined", handleRoomJoined)
-      if (socket) {
-        socket.off("connect")
-        socket.off("disconnect")
-      }
       clearTimeout(fallbackTimeout)
     }
   }, [roomCode, token])

@@ -56,30 +56,26 @@ export function AdvancedCodeEditor({ roomCode, problemId = "two-sum" }: Advanced
 
   useEffect(() => {
     // Set up socket listeners for submission results
-    const socket = socketService.getSocket()
-    if (socket) {
-      socket.on("submission_completed", (data) => {
-        if (data.userId === socket.id) {
-          setTestResults(data.results || [])
-          setSubmissionHistory((prev) => [data, ...prev.slice(0, 9)]) // Keep last 10
-          setIsSubmitting(false)
-          setActiveTab("results")
-        }
-      })
+    const handleSubmissionCompleted = (data: any) => {
+      setTestResults(data.results || [])
+      setSubmissionHistory((prev) => [data, ...prev.slice(0, 9)])
+      setIsSubmitting(false)
+      setActiveTab("results")
+    }
 
-      socket.on("submission_error", (data) => {
-        if (data.userId === socket.id) {
-          console.error("Submission error:", data.error)
-          setOutput(`Error: ${data.error}`)
-          setIsSubmitting(false)
-          setActiveTab("console")
-        }
-      })
+    const handleSubmissionError = (data: any) => {
+      console.error("Submission error:", data.error)
+      setOutput(`Error: ${data.error}`)
+      setIsSubmitting(false)
+      setActiveTab("console")
+    }
 
-      return () => {
-        socket.off("submission_completed")
-        socket.off("submission_error")
-      }
+    socketService.on("submission_completed", handleSubmissionCompleted)
+    socketService.on("submission_error", handleSubmissionError)
+
+    return () => {
+      socketService.off("submission_completed", handleSubmissionCompleted)
+      socketService.off("submission_error", handleSubmissionError)
     }
   }, [])
 
@@ -167,7 +163,7 @@ export function AdvancedCodeEditor({ roomCode, problemId = "two-sum" }: Advanced
     setIsSubmitting(true)
     try {
       if (roomCode) {
-        socketService.submitCode(code, language, problemId)
+        socketService.submitCode({ code, language, problemId })
       } else {
         // Handle practice mode submission
         await new Promise((resolve) => setTimeout(resolve, 1500))
