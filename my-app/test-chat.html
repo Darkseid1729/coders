@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Socket.IO Chat Test</title>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+<body>
+  <input id="msg" placeholder="Type a message..." autocomplete="off"/>
+  <button onclick="sendMsg()">Send</button>
+  <ul id="chat"></ul>
+  <script>
+    const socket = io("http://localhost:5000");
+
+    // NOTE: This test client does NOT use Firebase client SDK.
+    // The "authenticate" event expects a valid Firebase ID token.
+    // To get a real token, you must sign in with Firebase Auth in your real app and use user.getIdToken().
+    // For testing without Firebase, you can temporarily bypass authentication on the server or use a test token.
+
+    // Replace with a real Firebase ID token and a real room code for a real test:
+    socket.emit("authenticate", "YOUR_FIREBASE_TOKEN");
+    socket.emit("join_room", "ROOM_CODE");
+
+    socket.on("new_message", msg => {
+      const li = document.createElement("li");
+      li.textContent = msg.user + ": " + msg.message;
+      document.getElementById("chat").appendChild(li);
+    });
+
+    function sendMsg() {
+      const val = document.getElementById("msg").value;
+      socket.emit("send_message", { message: val });
+      document.getElementById("msg").value = "";
+    }
+  </script>
+</body>
+</html>
