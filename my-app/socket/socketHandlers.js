@@ -4,9 +4,15 @@ import { verifyFirebaseToken } from "../middleware/auth.js"
 const activeRooms = new Map() // Store active room data
 const userSockets = new Map() // Map user IDs to socket IDs
 
+// At the top of the file, add a debug log to confirm handler is loaded
+console.log("Socket handlers loaded");
+
 export function handleConnection(socket, io) {
   let currentUser = null
   let currentRoom = null
+
+  // At the start of handleConnection, log each new connection
+  console.log("New socket connection:", socket.id);
 
   // Authentication
   socket.on("authenticate", async (token) => {
